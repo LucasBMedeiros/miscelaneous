@@ -1,9 +1,24 @@
+/* ----------------------------------------------------------------------
+   Integrated Mapbox Zipcode-Provider Interaction
+---------------------------------------------------------------------- */
+
+// Mapbox initialization
+mapboxgl.accessToken = 'pk.eyJ1IjoibHVjYXNlYm0iLCJhIjoiY204cDRvd2F4MDZ6bTJqb2V6YzBjOGJveCJ9.nMKunwlmyPb37dk9uLM-ig';
+
 const GEOJSON_URL = 'https://zipcode-mapbox-data.s3.us-east-1.amazonaws.com/zipcodes-with-providers.geojson';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/light-v10',
+  center: [-96, 37],
+  zoom: 3
+});
+
+let fullGeo = null;
 
 map.on('load', () => {
   map.addSource('zips', { type: 'geojson', data: GEOJSON_URL });
 
-  // Grey outlines
   map.addLayer({
     id: 'zips-line',
     type: 'line',
@@ -11,83 +26,94 @@ map.on('load', () => {
     paint: { 'line-color': '#888', 'line-width': 0.4 }
   });
 
-  // Highlight fill (initially invisible)
   map.addLayer({
     id: 'zips-highlight',
     type: 'fill',
     source: 'zips',
     paint: { 'fill-color': '#3fa9f5', 'fill-opacity': 0.55 },
-    filter: ['==', ['get', 'ZCTA5CE10'], '__none__']
-  });
-
-  // Hover effect outline
-  map.addLayer({
-    id: 'zips-hover',
-    type: 'line',
-    source: 'zips',
-    paint: { 'line-color': '#0066ff', 'line-width': 2 },
-    filter: ['==', ['get', 'ZCTA5CE10'], '__none__']
-  });
-
-  // Fetch GeoJSON directly to populate sidebar
-  fetch(GEOJSON_URL)
-    .then(res => res.json())
-    .then(data => {
-      buildSidebar(data);
-    });
-
-  // Map hover functionality
-  map.on('mousemove', 'zips-highlight', (e) => {
-    if (e.features.length > 0) {
-      map.setFilter('zips-hover', ['==', ['get', 'ZCTA5CE10'], e.features[0].properties.ZCTA5CE10]);
-    }
-  });
-
-  map.on('mouseleave', 'zips-highlight', () => {
-    map.setFilter('zips-hover', ['==', ['get', 'ZCTA5CE10'], '__none__']);
+    filter: ['==', ['get', 'providers'], '___none___']
   });
 });
 
-// Build the sidebar dynamically based on GeoJSON data
-function buildSidebar(geojson) {
-  const listingsDiv = document.getElementById('listings');
-  listingsDiv.innerHTML = ''; // clear current sidebar content
+fetch(GEOJSON_URL)
+  .then(res => res.json())
+  .then(geojson => {
+    fullGeo = geojson;
+    buildProviderSidebar(geojson);
+  });
 
-  geojson.features.sort((a,b) => b.properties.providers - a.properties.providers);
+function buildProviderSidebar(geojson) {
+  const providers = new Set();
+  geojson.features.forEach(f =>
+    f.properties.providers.forEach(p => providers.add(p))
+  );
 
-  geojson.features.forEach(feature => {
-    const zip = feature.properties.ZCTA5CE10;
-    const providerCount = feature.properties.providers;
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
 
-    const listing = document.createElement('div');
-    listing.className = 'item';
-    listing.id = `listing-${zip}`;
+  const clearBtn = document.createElement('button');
+  clearBtn.textContent = 'Clear';
+  clearBtn.onclick = () => {
+    map.setFilter('zips-highlight', ['==', ['get', 'providers'], '___none___']);
+    sidebar.querySelectorAll('li').forEach(li => li.classList.remove('active'));
+    map.flyTo({ center: [-96, 37], zoom: 3 });
+  };
+  sidebar.appendChild(clearBtn);
 
-    const link = document.createElement('a');
-    link.href = '#';
-    link.className = 'title';
-    link.textContent = `ZIP: ${zip} (${providerCount} providers)`;
+  [...providers].sort().forEach(name => {
+    const li = document.createElement('li');
+    li.textContent = name;
 
-    listing.appendChild(link);
+    li.onclick = () => highlightProvider(name, li);
 
-    listingsDiv.appendChild(listing);
-
-    // Click event to zoom to the zipcode on map and highlight
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      flyToZip(feature);
-      highlightZip(zip);
-    });
+    sidebar.appendChild(li);
   });
 }
 
-// Function to smoothly fly to selected zipcode
-function flyToZip(feature) {
-  const bbox = turf.bbox(feature);
-  map.fitBounds(bbox, { padding: 50 });
+function highlightProvider(provider, sidebarItem) {
+  map.setFilter('zips-highlight', ['in', provider, ['get', 'providers']]);
+
+  const bounds = new mapboxgl.LngLatBounds();
+
+  fullGeo.features.forEach(f => {
+    if (!f.properties.providers.includes(provider)) return;
+
+    const addCoord = ([lng, lat]) => bounds.extend([lng, lat]);
+    const coords = f.geometry.coordinates;
+
+    if (f.geometry.type === 'Polygon') {
+      coords.forEach(ring => ring.forEach(addCoord));
+    } else if (f.geometry.type === 'MultiPolygon') {
+      coords.forEach(poly => poly.forEach(ring => ring.forEach(addCoord)));
+    }
+  });
+
+  if (!bounds.isEmpty()) {
+    map.fitBounds(bounds, { padding: 50, maxZoom: 10 });
+  }
+
+  document.querySelectorAll('#sidebar li').forEach(li => li.classList.remove('active'));
+  sidebarItem.classList.add('active');
 }
 
-// Highlight selected zip
-function highlightZip(zip) {
-  map.setFilter('zips-highlight', ['==', ['get', 'ZCTA5CE10'], zip]);
-}
+map.on('click', ['zips-highlight', 'zips-line'], e => {
+  const feature = e.features[0];
+  const zip = feature.properties.ZCTA5CE10;
+  let providers;
+
+  try {
+    providers = JSON.parse(feature.properties.providers);
+  } catch (error) {
+    providers = feature.properties.providers.split(',').map(p => p.trim());
+  }
+
+  const htmlContent = `
+    <strong>ZIP:</strong> ${zip}<br>
+    <strong>Providers:</strong> ${providers.join(', ')}
+  `;
+
+  new mapboxgl.Popup()
+    .setLngLat(e.lngLat)
+    .setHTML(htmlContent)
+    .addTo(map);
+});
