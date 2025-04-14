@@ -33,7 +33,7 @@ map.on('load', () => {
     id: 'zips-highlight',
     type: 'fill',
     source: 'zips',
-    paint: { 'fill-color': '#ff6600', 'fill-opacity': 0.55 },
+    paint: { 'fill-color': '#3fa9f5', 'fill-opacity': 0.55 },
     filter: ['==', ['get', 'providers'], '___none___']
   });
 
