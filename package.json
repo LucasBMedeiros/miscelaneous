@@ -1,0 +1,22 @@
+{
+  "name": "zipcode-mapbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "mapbox-gl": "^3.1.2"
+  },
+  "devDependencies": {
+    "d3-dsv": "^3.0.1",
+    "vite": "^5.0.0"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

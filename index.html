@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Provider coverage by ZIP</title>
+
+  <!-- Mapbox GL assets from their CDN (no npm needed) -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      font-family: sans-serif;
+    }
+  
+    #sidebar {
+      width: 150px;
+      overflow-y: auto;
+      border-right: 1px solid #444;
+      background: #1e1e1e;         /* dark background */
+      color: #eee;                 /* light text */
+      padding: 8px;
+      font-size: 13px;
+      scrollbar-width: thin;
+      scrollbar-color: #555 #1e1e1e;  /* thumb color, track color */ 
+    }
+
+    /* For WebKit-based browsers (Chrome, Edge, Safari) */
+    #sidebar::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #sidebar::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+
+    #sidebar::-webkit-scrollbar-thumb {
+      background-color: #555;
+      border-radius: 4px;
+    }
+
+  
+    #sidebar li {
+      list-style: none;
+      cursor: pointer;
+      padding: 3px 5px;
+      border-radius: 3px;
+      margin-bottom: 2px;
+      color: #ccc;
+    }
+
+    #sidebar li:hover {
+      background: #333;
+    }
+
+    #sidebar li.active {
+      background: #555;
+      font-weight: bold;
+      color: #fff;
+    }
+
+  
+    #map {
+      flex: 1;
+      position: relative;
+    }
+  
+    /* New: Table container at bottom right */
+    #zip-info {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: #1e1e1e;           /* dark background */
+      border: 1px solid #444;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      padding: 10px;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+      min-width: 200px;
+      z-index: 10;
+      color: #eee;                   /* light text */
+    }
+
+    #zip-info h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    #zip-info table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #zip-info th,
+    #zip-info td {
+      border-bottom: 1px solid #333;
+      text-align: left;
+      padding: 3px 6px;
+      color: #ccc;
+    }
+
+    #zip-info th {
+      background: #2a2a2a;
+      font-weight: bold;
+      font-size: 12px;
+      color: #eee;
+    }
+
+    #sidebar button {
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;        /* Full width to match sidebar */
+      margin-bottom: 10px;
+    }
+
+    #sidebar button:hover {
+      background: #444;
+    }
+
+  </style>
+  
+</head>
+
+<body>
+  <!--  Left sidebar for provider list and a "Clear" button  -->
+  <ul id="sidebar"></ul>
+
+  <!--  The map  -->
+  <div id="map"></div>
+
+  <div id="zip-info"></div>
+
+  <!--  Our custom logic  -->
+  <script src="app3.js"></script>
+</body>
+</html>
