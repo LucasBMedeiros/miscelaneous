@@ -4,8 +4,7 @@
 
 /* 1. Mapbox initialisation
    ------------------------------------------------------------ */
-   mapboxgl.accessToken =
-   'pk.eyJ1IjoibHVjYXNlYm0iLCJhIjoiY204cDRvd2F4MDZ6bTJqb2V6YzBjOGJveCJ9.nMKunwlmyPb37dk9uLM-ig'; // ← your public token
+   mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
  
  const map = new mapboxgl.Map({
    container: 'map',

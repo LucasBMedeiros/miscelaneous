@@ -1,5 +1,5 @@
 // Global variables and Map setup
-var mapboxAccessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+var mapboxAccessToken = CONFIG.MAPBOX_TOKEN;
 var mapStyle = 'mapbox://styles/mapbox/light-v10';
 var GEOJSON_URL = 'https://zipcode-mapbox-data.s3.us-east-1.amazonaws.com/zipcodes-with-providers.geojson';
 

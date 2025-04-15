@@ -3,7 +3,7 @@
 ---------------------------------------------------------------------- */
 
 // Mapbox initialization
-mapboxgl.accessToken = 'pk.eyJ1IjoibHVjYXNlYm0iLCJhIjoiY204cDRvd2F4MDZ6bTJqb2V6YzBjOGJveCJ9.nMKunwlmyPb37dk9uLM-ig';
+mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
 
 const GEOJSON_URL = 'https://zipcode-mapbox-data.s3.us-east-1.amazonaws.com/zipcodes-with-providers.geojson';
 

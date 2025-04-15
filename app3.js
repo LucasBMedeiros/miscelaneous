@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------- */
 
 /* 1) Mapbox initialization */
-mapboxgl.accessToken = 'pk.eyJ1IjoibHVjYXNlYm0iLCJhIjoiY204cDRvd2F4MDZ6bTJqb2V6YzBjOGJveCJ9.nMKunwlmyPb37dk9uLM-ig';
+mapboxgl.accessToken = CONFIG.MAPBOX_TOKEN;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -50,6 +50,11 @@ map.on('load', () => {
     }, 'zips-highlight');
   })
 });
+
+
+
+
+
 
 const popup = new mapboxgl.Popup({
     closeButton: false,
