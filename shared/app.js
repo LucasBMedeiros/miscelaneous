@@ -1,124 +1,108 @@
-// === Configuration ===
-var mapboxAccessToken = 'your-mapbox-token';
+// === CONFIG ===
+var mapboxAccessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
 var mapStyle = 'mapbox://styles/mapbox/light-v10';
-var datasets = ['dataset'];
+var datasets = ['dataset']; // alias set in manifest
 var mapDiv = document.getElementById("map");
 var listingsDiv = document.getElementById("listings");
 
-// === Domo query setup ===
-var query = `/data/v1/${datasets[0]}?limit=30000`;
-
-// === Mapbox init ===
+// === INIT MAPBOX ===
 mapboxgl.accessToken = mapboxAccessToken;
 var map = new mapboxgl.Map({
-    container: mapDiv,
-    style: mapStyle,
-    center: [-95, 40], // center of the US
-    zoom: 3,
-    scrollZoom: true
+  container: mapDiv,
+  style: mapStyle,
+  center: [-95, 40], // Center US
+  zoom: 3,
+  scrollZoom: true
 });
+
+// === DOMO QUERY ===
+var query = `/data/v1/${datasets[0]}?limit=30000`;
+
+let providerToZips = {};
 
 map.on("load", function () {
-    domo.get(query).then(processData);
+  domo.get(query).then(processData);
 });
 
-// === Data processing ===
+// === PROCESS DATA ===
 function processData(dataRows) {
-    const geoJSON = {
-        type: 'FeatureCollection',
-        features: []
-    };
+  const geoJSON = {
+    type: "FeatureCollection",
+    features: []
+  };
 
-    const providerToZipMap = {};
+  dataRows.forEach(row => {
+    const zip = row["ZCTA5CE10"];
+    const providers = JSON.parse(row["providers"]);
+    const geometry = JSON.parse(row["geometry"]);
 
-    dataRows.forEach(row => {
-        const zip = row['ZCTA5CE10'];
-        const providers = JSON.parse(row['providers']); // turn string into array
-        const geometry = JSON.parse(row['geometry']);   // turn string into geojson object
-
-        geoJSON.features.push({
-            type: 'Feature',
-            geometry: geometry,
-            properties: {
-                zip: zip,
-                providers: providers
-            }
-        });
-
-        // Map each provider to associated ZIPs
-        providers.forEach(provider => {
-            if (!providerToZipMap[provider]) {
-                providerToZipMap[provider] = [];
-            }
-            providerToZipMap[provider].push(zip);
-        });
+    geoJSON.features.push({
+      type: "Feature",
+      geometry: geometry,
+      properties: {
+        zip: zip,
+        providers: providers
+      }
     });
 
-    // Add geojson source and layer
-    map.addSource('zipcodes', {
-        type: 'geojson',
-        data: geoJSON
+    providers.forEach(p => {
+      if (!providerToZips[p]) providerToZips[p] = [];
+      providerToZips[p].push(zip);
     });
+  });
 
-    map.addLayer({
-        id: 'zipcodes-fill',
-        type: 'fill',
-        source: 'zipcodes',
-        paint: {
-            'fill-color': '#ccc',
-            'fill-opacity': 0.4
-        }
-    });
+  // Add GeoJSON to Map
+  map.addSource('zipcodes', { type: 'geojson', data: geoJSON });
 
-    map.addLayer({
-        id: 'zipcodes-highlight',
-        type: 'line',
-        source: 'zipcodes',
-        paint: {
-            'line-color': '#007cbf',
-            'line-width': 2
-        },
-        filter: ['in', 'zip', ''] // default empty filter
-    });
+  map.addLayer({
+    id: 'zipcodes-fill',
+    type: 'fill',
+    source: 'zipcodes',
+    paint: {
+      'fill-color': '#4466ff',
+      'fill-opacity': 0.4
+    }
+  });
 
-    buildSidebar(Object.keys(providerToZipMap).sort(), providerToZipMap);
+  map.addLayer({
+    id: 'zipcodes-outline',
+    type: 'line',
+    source: 'zipcodes',
+    paint: {
+      'line-color': '#222',
+      'line-width': 1
+    }
+  });
+
+  buildSidebar(geoJSON);
 }
 
-// === Build the clickable sidebar ===
-function buildSidebar(providers, providerToZipMap) {
-    listingsDiv.innerHTML = '';
-    providers.forEach(name => {
-        const btn = document.createElement('button');
-        btn.className = 'provider-btn';
-        btn.innerText = name;
-        btn.onclick = () => highlightZipcodes(providerToZipMap[name]);
-        listingsDiv.appendChild(btn);
-    });
+// === SIDEBAR ===
+function buildSidebar(geoJSON) {
+  listingsDiv.innerHTML = '';
+  Object.keys(providerToZips).sort().forEach(provider => {
+    const btn = document.createElement('button');
+    btn.className = 'provider-btn';
+    btn.innerText = provider;
+    btn.onclick = () => zoomToProvider(provider, geoJSON);
+    listingsDiv.appendChild(btn);
+  });
 }
 
-// === Highlight zipcodes on click ===
-function highlightZipcodes(zipcodeList) {
-    map.setFilter('zipcodes-highlight', ['in', ['get', 'zip'], ['literal', zipcodeList]]);
+// === ZOOM TO PROVIDER ===
+function zoomToProvider(provider, geoJSON) {
+  const zipcodes = providerToZips[provider];
+  const features = geoJSON.features.filter(f => zipcodes.includes(f.properties.zip));
+  if (features.length === 0) return;
 
-    const features = map.querySourceFeatures('zipcodes', {
-        sourceLayer: 'zipcodes'
-    });
+  const bounds = features.reduce((b, feature) => {
+    const coords = feature.geometry.coordinates.flat(2);
+    coords.forEach(c => b.extend(c));
+    return b;
+  }, new mapboxgl.LngLatBounds(features[0].geometry.coordinates[0][0], features[0].geometry.coordinates[0][0]));
 
-    // Find only visible features that match the filter
-    const visible = features.filter(f => zipcodeList.includes(f.properties.zip));
+  map.fitBounds(bounds, { padding: 40, duration: 1000 });
 
-    if (visible.length === 0) return;
-
-    // Collect all polygon coordinates
-    const coords = visible.flatMap(f => {
-        const geom = f.geometry.coordinates;
-        return f.geometry.type === 'Polygon' ? geom[0] : geom.flat(1);
-    });
-
-    const bounds = coords.reduce((b, coord) => b.extend(coord), new mapboxgl.LngLatBounds(coords[0], coords[0]));
-
-    map.fitBounds(bounds, {
-        padding: 40,
-        duration: 1000
-    });
+  map.setFilter('zipcodes-fill', ['in', ['get', 'zip'], ['literal', zipcodes]]);
+  map.setFilter('zipcodes-outline', ['in', ['get', 'zip'], ['literal', zipcodes]]);
 }
