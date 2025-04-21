@@ -34,22 +34,36 @@ function processData(dataRows) {
   dataRows.forEach(row => {
     const zip = row["ZCTA5CE10"];
     const providers = JSON.parse(row["providers"]);
-    const geometry = JSON.parse(row["geometry"]);
-
-    geoJSON.features.push({
-      type: "Feature",
-      geometry: geometry,
-      properties: {
-        zip: zip,
-        providers: providers
-      }
-    });
-
-    providers.forEach(p => {
-      if (!providerToZips[p]) providerToZips[p] = [];
-      providerToZips[p].push(zip);
-    });
+  
+    // FIX: replace all double quotes inside the object string with single quotes first, then fix the structure
+    let geometryStr = row["geometry"]
+      .replace(/'/g, '"') // replace single quotes with proper double quotes (if any)
+      .replace(/"{/g, '{') // remove invalid quotes around JSON object
+      .replace(/}"/g, '}'); // remove trailing quotes
+  
+    try {
+      const geometry = JSON.parse(geometryStr);
+  
+      geoJSON.features.push({
+        type: "Feature",
+        geometry: geometry,
+        properties: {
+          zip: zip,
+          providers: providers
+        }
+      });
+  
+      // Link providers to zip codes
+      providers.forEach(p => {
+        if (!providerToZips[p]) providerToZips[p] = [];
+        providerToZips[p].push(zip);
+      });
+  
+    } catch (e) {
+      console.error("Failed to parse geometry for zip", zip, e);
+    }
   });
+  
 
   // Add GeoJSON to Map
   map.addSource('zipcodes', { type: 'geojson', data: geoJSON });
